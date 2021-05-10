@@ -22,8 +22,16 @@
 
 #define mem_size        1024            //Memory Size
 
+#define SET_BAUDRATE_VALUE _IOW('a','a',int*) 
+#define GET_BAUDRATE_VALUE _IOR('a','b',int*)
+#define TX_DATA _IOW('a','c',char*)
+#define RX_DATA _IOR('a','d',char*)
+
+
 int32_t value = 0;
 uint8_t *kernel_buffer;
+uint8_t *mmap_buff;
+unsigned long int baudrate=9600;
 
 dev_t dev = 0;
 static struct class *dev_class;
@@ -64,6 +72,10 @@ static int device_open(struct inode *inode, struct file *file)
 		printk(KERN_INFO "Cannot allocate memory in kernel\n");
 		return -1;
 	}
+	if((mmap_buff = kmalloc(mem_size , GFP_KERNEL)) == 0){
+		printk(KERN_INFO "Cannot allocate memory in kernel\n");
+		return -1;
+	}
 	pr_info("Device File Opened...!!!\n");
 	return 0;
 }
@@ -85,7 +97,6 @@ static ssize_t device_read(struct file *filp, char __user *buf, size_t len, loff
 {
 	
 	pr_info("Read function called...\n");
-	//kernel_buffer="Hello !!! Driver is ready";
 	
 	//Copy the data from the kernel space to the user-space
 	if(copy_to_user(buf, kernel_buffer, mem_size))
@@ -107,7 +118,6 @@ static ssize_t device_write(struct file *filp, const char __user *buf, size_t le
 	{
 		pr_err("Data Write : Err!\n");
 	}
-	//pr_info("Data Written is %s\n",kernel_buffer);
 	return len;
 }
 
@@ -117,41 +127,50 @@ static ssize_t device_write(struct file *filp, const char __user *buf, size_t le
 static  int device_mmap( struct file *file,  struct vm_area_struct *vma)  
 {
 
-	/*TODO Implementation of mmap in Userspace and kernelspace as well*/
 
 	pr_info("Mmap function called...!!!\n");
-	return 0;
+	
+	//Indicates the mapping of device IO space  
+	vma->vm_flags |= VM_IO; 
+	//vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP; 
+	
+	if(remap_pfn_range(vma, vma->vm_start, virt_to_phys(mmap_buff)>>PAGE_SHIFT, 
+				vma->vm_end-vma->vm_start, vma->vm_page_prot))  
+	{  
+		pr_err("could not map the address area\n");
+		return -EAGAIN;  
+	}
+
+	return 0;  
 }
 
 
-/*
- ** This function will be called when we write IOCTL on the Device file
- */
 static long device_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	switch(cmd) {
-		case 9600:
-			pr_info("Baud Rate = %d\n", cmd);
-			value=9600;
-			if( copy_to_user((int32_t*) arg, &value, sizeof(value)) )
-                        {
-                                pr_err("Data Read : Err!\n");
-                        }
+         switch(cmd) {
+                case GET_BAUDRATE_VALUE:
+			copy_to_user((unsigned long int*) arg, &baudrate, sizeof(baudrate));
+			printk(KERN_INFO "baudrate Value is: %ld\n",baudrate);
 			break;
-		case 115200:
-			pr_info("Baud Rate = %d\n", cmd);
-			value=115200;
-			if( copy_to_user((int32_t*) arg, &value, sizeof(value)) )
-                        {
-                                pr_err("Data Read : Err!\n");
-                        }
+		case SET_BAUDRATE_VALUE:
+			copy_from_user(&baudrate ,(unsigned long int*) arg, sizeof(baudrate));
+                        printk(KERN_INFO "set baudrate Value = %ld\n",baudrate);
 			break;
-		default:
-			pr_info("Default\n");
-			break;
-	}
-	return 0;
+		case TX_DATA:
+			copy_from_user(mmap_buff ,(char *) arg, sizeof(mmap_buff));
+			printk(KERN_INFO "TX_DATA = %s\n",mmap_buff);
+			break;		
+		case RX_DATA:
+			copy_to_user((char*) arg, mmap_buff, sizeof(mmap_buff));
+			printk(KERN_INFO "RX_DATA = %s\n",mmap_buff);
+			 break;
+                default:
+                        pr_info("Default\n");
+                        break;
+        }
+        return 0;
 }
+
 
 /*
  ** Module Init function

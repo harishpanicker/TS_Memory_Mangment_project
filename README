@@ -1,0 +1,47 @@
+how to run the app:
+-------------------
+
+1) creating Dynamic library for that we need .o file (object file)
+------------------------------------------------------------------
+
+cc- c -fPIC lib.c --> this will generate a lib.o file
+
+cc -shared -o libmem.so(name of my shared library) lib.o(the generated object file)
+
+(the above command will generate shared library for you .so file)
+
+cc userapp.c ./libmem.so -o test
+
+(test is the name of the executable)
+
+how to check whether my .so file is linked as shared library or not
+
+ldd test (list all dependencies)
+
+
+2) how to insert driver
+-----------------------
+sudo su
+make
+insmod my_driver.ko
+dmesg | tail
+
+[NOTE : After running the below step follow this step]
+ps -e | test (for finding my pid to know mmap related info)
+cat /proc/pid/maps
+(you will get dmesgs)
+
+
+3) now run the application by opening another terminal 
+------------------------------------------------------
+sudo su
+./test [you will get the options you can tryout]
+
+[mmap you will find under ioctl operation(data_tx /data_rx) where i'm transmitting and receiving data via shared memory created using mmap.
+
+4) Remove the driver
+--------------------
+
+rmmod my_driver.ko
+dmesg | tail
+make clean
