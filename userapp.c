@@ -59,7 +59,7 @@ int main()
 				printf(" 	4. Data Reception	\n");
 				printf("Enter the number perform IOCTL operations:");
 				scanf(" %c",&choice);
-				mapBuf = mmap(NULL, 1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0); //Memory mapping, will call the driver mmap function
+				mapBuf = ts_mmap(NULL, 1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0); //Memory mapping, will call the driver mmap function
 				switch(choice)
 				{
 					case '1':
@@ -91,6 +91,7 @@ int main()
 				break;
 		   	case '4':
 				   printf("closing the userspace application\n");
+				   ts_munmap(mapBuf, 1024); //Remove the mapping  
 				   ts_close(fd);
 				   exit(1);
 				   break;
@@ -101,6 +102,6 @@ int main()
 	
 	}
 	
-	munmap(mapBuf, 1024); //Remove the mapping  
+	ts_munmap(mapBuf, 1024); //Remove the mapping  
 	ts_close(fd);
 }

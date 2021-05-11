@@ -27,6 +27,17 @@ int ts_ioctl (int fd, unsigned long int request,void *arg)
 	return ioctl(fd,request,arg);
 }
 
+void *ts_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+	return mmap(addr,length,prot,flags,fd,offset);
+}
+
+int ts_munmap(void *addr, size_t length)
+{
+	return munmap(addr,length);
+}
+
+
 int ts_get_baud_rate(int fd, unsigned long int *baudrate)
 {
 	
@@ -48,3 +59,7 @@ size_t ts_rx_data(int fd, void* buf, size_t cnt)
 {
 	return read(fd,buf,cnt);
 }
+
+
+
+       
